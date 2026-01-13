@@ -31,6 +31,15 @@ class DungeonMaze {
     this.exitMesh = null;
     this.torchLights = [];
 
+    // Hint system
+    this.hintLantern = null;
+    this.hintLight = null;
+    this.hintActive = false;
+
+    // Audio system
+    this.audioContext = null;
+    this.audioStarted = false;
+
     // DOM elements
     this.container = document.getElementById('game-container');
     this.instructionsOverlay = document.getElementById('instructions-overlay');
@@ -61,7 +70,7 @@ class DungeonMaze {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.5;
+    this.renderer.toneMappingExposure = 1.2;
     this.container.appendChild(this.renderer.domElement);
 
     this.clock = new THREE.Clock();
@@ -70,7 +79,7 @@ class DungeonMaze {
   setupScene() {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x0a0a0f);
-    this.scene.fog = new THREE.Fog(0x0a0a0f, 1, 15);
+    this.scene.fog = new THREE.Fog(0x0a0a0f, 5, 45);
   }
 
   setupCamera() {
@@ -83,17 +92,32 @@ class DungeonMaze {
   }
 
   setupLighting() {
-    // Dim ambient light for dungeon atmosphere
-    const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.3);
+    // Ambient light for dungeon atmosphere
+    const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
     this.scene.add(ambientLight);
 
-    // Player's torch light (follows camera)
-    const playerLight = new THREE.PointLight(0xff9944, 1, 8);
-    playerLight.castShadow = true;
-    playerLight.shadow.mapSize.width = 512;
-    playerLight.shadow.mapSize.height = 512;
-    this.camera.add(playerLight);
-    playerLight.position.set(0, 0.3, 0);
+    // Player's flashlight (spotlight that follows camera direction)
+    this.flashlight = new THREE.SpotLight(0xffffff, 8);
+    this.flashlight.angle = Math.PI / 5; // 36 degree cone
+    this.flashlight.penumbra = 0.2; // Soft edges
+    this.flashlight.decay = 1;
+    this.flashlight.distance = 50;
+    this.flashlight.castShadow = true;
+    this.flashlight.shadow.mapSize.width = 512;
+    this.flashlight.shadow.mapSize.height = 512;
+
+    // Position flashlight at camera and point forward
+    this.flashlight.position.set(0, 0, 0);
+    this.flashlight.target.position.set(0, 0, -1);
+
+    this.camera.add(this.flashlight);
+    this.camera.add(this.flashlight.target);
+
+    // Add a small ambient point light around player for subtle fill
+    const fillLight = new THREE.PointLight(0xffaa66, 0.5, 5);
+    fillLight.position.set(0, 0, 0);
+    this.camera.add(fillLight);
+
     this.scene.add(this.camera);
   }
 
@@ -230,7 +254,7 @@ class DungeonMaze {
               this.maze[checkZ][checkX] === 1
             ) {
               // Add torch light
-              const torchLight = new THREE.PointLight(0xff6622, 0.5, 6);
+              const torchLight = new THREE.PointLight(0xff6622, 1.2, 10);
               torchLight.position.set(
                 x * this.cellSize - pos.dx * 0.3,
                 this.wallHeight * 0.7,
@@ -337,6 +361,246 @@ class DungeonMaze {
         this.pauseGame();
       }
     });
+
+    // Hint key listener
+    document.addEventListener('keydown', (event) => {
+      if (event.code === 'KeyH' && this.gameState === 'playing' && !this.hintActive) {
+        this.showHint();
+      }
+    });
+  }
+
+  findPathToExit() {
+    // BFS pathfinding to find the path through the maze
+    const playerGridX = Math.round(this.camera.position.x / this.cellSize);
+    const playerGridZ = Math.round(this.camera.position.z / this.cellSize);
+    const end = this.mazeGenerator.getEnd();
+
+    // BFS queue: each item is {x, z, path}
+    const queue = [{ x: playerGridX, z: playerGridZ, path: [] }];
+    const visited = new Set();
+    visited.add(`${playerGridX},${playerGridZ}`);
+
+    const directions = [
+      { dx: 0, dz: -1 }, // North
+      { dx: 1, dz: 0 },  // East
+      { dx: 0, dz: 1 },  // South
+      { dx: -1, dz: 0 }  // West
+    ];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+
+      // Check if we reached the exit
+      if (current.x === end.x && current.z === end.z) {
+        return current.path;
+      }
+
+      // Explore neighbors
+      for (const dir of directions) {
+        const newX = current.x + dir.dx;
+        const newZ = current.z + dir.dz;
+        const key = `${newX},${newZ}`;
+
+        if (!visited.has(key) && !this.mazeGenerator.isWall(newX, newZ)) {
+          visited.add(key);
+          queue.push({
+            x: newX,
+            z: newZ,
+            path: [...current.path, { x: newX, z: newZ }]
+          });
+        }
+      }
+    }
+
+    // No path found (shouldn't happen in a valid maze)
+    return [];
+  }
+
+  showHint() {
+    if (this.hintActive) return;
+    this.hintActive = true;
+
+    // Find path through the maze to the exit
+    const path = this.findPathToExit();
+
+    let normX, normZ;
+
+    if (path.length > 0) {
+      // Get the next cell in the path (or a few steps ahead for better visibility)
+      const targetIndex = Math.min(2, path.length - 1);
+      const targetCell = path[targetIndex];
+      const targetX = targetCell.x * this.cellSize;
+      const targetZ = targetCell.z * this.cellSize;
+
+      // Calculate direction to the next path cell
+      const dirX = targetX - this.camera.position.x;
+      const dirZ = targetZ - this.camera.position.z;
+      const distance = Math.sqrt(dirX * dirX + dirZ * dirZ);
+      normX = dirX / distance;
+      normZ = dirZ / distance;
+    } else {
+      // Fallback to direct direction if no path found
+      const end = this.mazeGenerator.getEnd();
+      const exitX = end.x * this.cellSize;
+      const exitZ = end.z * this.cellSize;
+      const dirX = exitX - this.camera.position.x;
+      const dirZ = exitZ - this.camera.position.z;
+      const distance = Math.sqrt(dirX * dirX + dirZ * dirZ);
+      normX = dirX / distance;
+      normZ = dirZ / distance;
+    }
+
+    // Position lantern in front of player, in direction of path
+    const lanternDistance = 1.5;
+    const lanternX = this.camera.position.x + normX * lanternDistance;
+    const lanternZ = this.camera.position.z + normZ * lanternDistance;
+
+    // Create lantern group
+    const lanternGroup = new THREE.Group();
+
+    // Lantern body (glass enclosure)
+    const glassGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+    const glassMaterial = new THREE.MeshStandardMaterial({
+      color: 0x00ff88,
+      emissive: 0x00ff88,
+      emissiveIntensity: 2,
+      transparent: true,
+      opacity: 0.8,
+    });
+    const glass = new THREE.Mesh(glassGeometry, glassMaterial);
+    lanternGroup.add(glass);
+
+    // Lantern frame (top and bottom caps)
+    const capGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.05, 8);
+    const frameMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2a2a2a,
+      metalness: 0.8,
+      roughness: 0.3,
+    });
+    const topCap = new THREE.Mesh(capGeometry, frameMaterial);
+    topCap.position.y = 0.15;
+    lanternGroup.add(topCap);
+
+    const bottomCap = new THREE.Mesh(capGeometry, frameMaterial);
+    bottomCap.position.y = -0.15;
+    lanternGroup.add(bottomCap);
+
+    // Handle
+    const handleGeometry = new THREE.TorusGeometry(0.06, 0.015, 8, 16, Math.PI);
+    const handle = new THREE.Mesh(handleGeometry, frameMaterial);
+    handle.position.y = 0.2;
+    handle.rotation.x = Math.PI;
+    lanternGroup.add(handle);
+
+    // Position the lantern
+    lanternGroup.position.set(lanternX, this.playerHeight, lanternZ);
+    this.scene.add(lanternGroup);
+    this.hintLantern = lanternGroup;
+
+    // Add point light to lantern
+    this.hintLight = new THREE.PointLight(0x00ff88, 3, 10);
+    this.hintLight.position.copy(lanternGroup.position);
+    this.scene.add(this.hintLight);
+
+    // Store start time for duration
+    this.hintStartTime = Date.now();
+  }
+
+  updateHint() {
+    if (!this.hintActive || !this.hintLantern) return;
+
+    const elapsed = (Date.now() - this.hintStartTime) / 1000;
+    const duration = 3; // seconds
+
+    if (elapsed >= duration) {
+      // Remove hint
+      this.scene.remove(this.hintLantern);
+      this.scene.remove(this.hintLight);
+      this.hintLantern = null;
+      this.hintLight = null;
+      this.hintActive = false;
+      return;
+    }
+
+    // Gentle pulsing glow effect
+    const pulse = 1 + Math.sin(elapsed * 5) * 0.2;
+    this.hintLight.intensity = 3 * pulse;
+  }
+
+  playCongratulatoryJingle() {
+    // Create audio context
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Master gain
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = 0.4;
+    masterGain.connect(ctx.destination);
+
+    // Happy jingle notes (C major arpeggio with triumphant ending)
+    const notes = [
+      { freq: 523.25, start: 0, duration: 0.15 },    // C5
+      { freq: 659.25, start: 0.15, duration: 0.15 }, // E5
+      { freq: 783.99, start: 0.3, duration: 0.15 },  // G5
+      { freq: 1046.50, start: 0.45, duration: 0.3 }, // C6
+      { freq: 783.99, start: 0.75, duration: 0.15 }, // G5
+      { freq: 1046.50, start: 0.9, duration: 0.5 },  // C6 (long)
+    ];
+
+    notes.forEach(note => {
+      // Main tone
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = note.freq;
+
+      // Harmony (fifth above)
+      const oscHarmony = ctx.createOscillator();
+      oscHarmony.type = 'sine';
+      oscHarmony.frequency.value = note.freq * 1.5;
+
+      // Envelope
+      const envelope = ctx.createGain();
+      envelope.gain.setValueAtTime(0, ctx.currentTime + note.start);
+      envelope.gain.linearRampToValueAtTime(0.3, ctx.currentTime + note.start + 0.05);
+      envelope.gain.linearRampToValueAtTime(0, ctx.currentTime + note.start + note.duration);
+
+      const harmonyEnvelope = ctx.createGain();
+      harmonyEnvelope.gain.setValueAtTime(0, ctx.currentTime + note.start);
+      harmonyEnvelope.gain.linearRampToValueAtTime(0.1, ctx.currentTime + note.start + 0.05);
+      harmonyEnvelope.gain.linearRampToValueAtTime(0, ctx.currentTime + note.start + note.duration);
+
+      osc.connect(envelope);
+      envelope.connect(masterGain);
+      oscHarmony.connect(harmonyEnvelope);
+      harmonyEnvelope.connect(masterGain);
+
+      osc.start(ctx.currentTime + note.start);
+      osc.stop(ctx.currentTime + note.start + note.duration + 0.1);
+      oscHarmony.start(ctx.currentTime + note.start);
+      oscHarmony.stop(ctx.currentTime + note.start + note.duration + 0.1);
+    });
+
+    // Add a cheerful shimmer/sparkle effect
+    for (let i = 0; i < 8; i++) {
+      const sparkle = ctx.createOscillator();
+      sparkle.type = 'sine';
+      sparkle.frequency.value = 2000 + Math.random() * 2000;
+
+      const sparkleGain = ctx.createGain();
+      const startTime = ctx.currentTime + 0.9 + i * 0.05;
+      sparkleGain.gain.setValueAtTime(0, startTime);
+      sparkleGain.gain.linearRampToValueAtTime(0.08, startTime + 0.02);
+      sparkleGain.gain.linearRampToValueAtTime(0, startTime + 0.15);
+
+      sparkle.connect(sparkleGain);
+      sparkleGain.connect(masterGain);
+
+      sparkle.start(startTime);
+      sparkle.stop(startTime + 0.2);
+    }
+
+    // Close context after jingle finishes
+    setTimeout(() => ctx.close(), 2000);
   }
 
   startGame() {
@@ -366,6 +630,9 @@ class DungeonMaze {
     this.gameState = 'completed';
     this.endTime = Date.now();
     this.controls.unlock();
+
+    // Play congratulatory jingle
+    this.playCongratulatoryJingle();
 
     // Calculate completion time
     const totalTime = Math.floor((this.endTime - this.startTime) / 1000);
@@ -455,8 +722,11 @@ class DungeonMaze {
 
       // Animate torch lights (flicker effect)
       this.torchLights.forEach((light, index) => {
-        light.intensity = 0.4 + Math.sin(Date.now() * 0.01 + index) * 0.15;
+        light.intensity = 1.0 + Math.sin(Date.now() * 0.01 + index) * 0.3;
       });
+
+      // Update hint lantern animation
+      this.updateHint();
     }
 
     this.renderer.render(this.scene, this.camera);
