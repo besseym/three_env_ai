@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dungeon Maze</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="description" content="A 3D dungeon maze game built with three.js">
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#1a1a2e">
+</head>
+
+<body>
+  <!-- Instructions Overlay -->
+  <div id="instructions-overlay" class="overlay">
+    <div class="overlay-content">
+      <h1>Dungeon Maze</h1>
+      <p class="subtitle">Escape the underground labyrinth</p>
+
+      <div class="controls-info">
+        <h2>Controls</h2>
+        <div class="control-row">
+          <span class="key">W</span>
+          <span class="description">Move Forward</span>
+        </div>
+        <div class="control-row">
+          <span class="key">S</span>
+          <span class="description">Move Backward</span>
+        </div>
+        <div class="control-row">
+          <span class="key">A</span>
+          <span class="description">Strafe Left</span>
+        </div>
+        <div class="control-row">
+          <span class="key">D</span>
+          <span class="description">Strafe Right</span>
+        </div>
+        <div class="control-row">
+          <span class="key">Mouse</span>
+          <span class="description">Look Around</span>
+        </div>
+      </div>
+
+      <p class="goal">Find the glowing exit to escape!</p>
+
+      <button id="start-button">Click to Begin</button>
+      <p class="hint">Click to lock your mouse cursor</p>
+    </div>
+  </div>
+
+  <!-- Congratulations Overlay -->
+  <div id="congratulations-overlay" class="overlay hidden">
+    <div class="overlay-content congratulations">
+      <h1>Congratulations!</h1>
+      <p class="subtitle">You escaped the dungeon!</p>
+      <div class="stats" id="completion-stats"></div>
+      <button id="restart-button">Play Again</button>
+    </div>
+  </div>
+
+  <!-- Minimap (optional HUD element) -->
+  <div id="hud">
+    <div id="crosshair"></div>
+  </div>
+
+  <!-- Three.js container -->
+  <div id="game-container"></div>
+
+  <!-- Import map for ES modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

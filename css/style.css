@@ -1,0 +1,324 @@
+/*! Dungeon Maze Styles */
+
+/* ==========================================================================
+   Base styles
+   ========================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #0a0a0f;
+  color: #c4b59d;
+}
+
+/* ==========================================================================
+   Game Container
+   ========================================================================== */
+
+#game-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#game-container canvas {
+  display: block;
+}
+
+/* ==========================================================================
+   Overlay Styles
+   ========================================================================== */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 15, 0.95);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  backdrop-filter: blur(5px);
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.overlay-content {
+  text-align: center;
+  max-width: 500px;
+  padding: 40px;
+  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #4a3f35;
+  border-radius: 8px;
+  box-shadow:
+    0 0 40px rgba(255, 170, 50, 0.1),
+    inset 0 0 60px rgba(0, 0, 0, 0.5);
+}
+
+.overlay-content h1 {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  color: #ffa832;
+  text-shadow:
+    0 0 10px rgba(255, 168, 50, 0.5),
+    0 0 20px rgba(255, 168, 50, 0.3);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.overlay-content .subtitle {
+  font-size: 1.2rem;
+  color: #8b8b8b;
+  margin-bottom: 30px;
+  font-style: italic;
+}
+
+/* ==========================================================================
+   Controls Info
+   ========================================================================== */
+
+.controls-info {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 25px;
+  border: 1px solid #3a3a4a;
+}
+
+.controls-info h2 {
+  font-size: 1.3rem;
+  color: #d4a656;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+.control-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.control-row:last-child {
+  margin-bottom: 0;
+}
+
+.key {
+  display: inline-block;
+  min-width: 60px;
+  padding: 8px 12px;
+  background: linear-gradient(145deg, #2a2a3a, #1a1a2a);
+  border: 1px solid #4a4a5a;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.description {
+  color: #9a9a9a;
+  font-size: 0.95rem;
+  min-width: 120px;
+  text-align: left;
+}
+
+/* ==========================================================================
+   Goal and Hint Text
+   ========================================================================== */
+
+.goal {
+  font-size: 1.1rem;
+  color: #7dcea0;
+  margin-bottom: 25px;
+  padding: 15px;
+  background: rgba(125, 206, 160, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(125, 206, 160, 0.3);
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 15px;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+button {
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #1a1a2e;
+  background: linear-gradient(145deg, #ffa832, #d4892a);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 4px 15px rgba(255, 168, 50, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  background: linear-gradient(145deg, #ffb848, #e49a3a);
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 20px rgba(255, 168, 50, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 2px 10px rgba(255, 168, 50, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ==========================================================================
+   Congratulations Overlay
+   ========================================================================== */
+
+.congratulations h1 {
+  color: #7dcea0;
+  text-shadow:
+    0 0 10px rgba(125, 206, 160, 0.5),
+    0 0 20px rgba(125, 206, 160, 0.3);
+}
+
+.congratulations .subtitle {
+  color: #a8d8a8;
+  font-size: 1.4rem;
+  margin-bottom: 20px;
+}
+
+.stats {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 25px;
+  border: 1px solid #3a5a4a;
+}
+
+.stats p {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: #c4c4c4;
+}
+
+.stats p:last-child {
+  margin-bottom: 0;
+}
+
+.stats span {
+  color: #ffa832;
+  font-weight: bold;
+}
+
+/* ==========================================================================
+   HUD Elements
+   ========================================================================== */
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+}
+
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  opacity: 0.7;
+}
+
+#crosshair::before,
+#crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+#crosshair::before {
+  width: 2px;
+  height: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#crosshair::after {
+  width: 100%;
+  height: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 600px) {
+  .overlay-content {
+    padding: 25px;
+    margin: 20px;
+  }
+
+  .overlay-content h1 {
+    font-size: 2rem;
+  }
+
+  .control-row {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .description {
+    text-align: center;
+  }
+
+  button {
+    padding: 12px 30px;
+    font-size: 1rem;
+  }
+}
+
+/* ==========================================================================
+   Torch flicker animation for atmosphere
+   ========================================================================== */
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+  75% { opacity: 0.95; }
+}
